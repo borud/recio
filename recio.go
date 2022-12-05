@@ -51,12 +51,17 @@ func (r recordReader) Read(p []byte) (int, error) {
 	}
 
 	if uint32(len(p)) < length {
+		// discard records that we can't return fully
 		_, err := io.CopyN(io.Discard, r.reader, int64(length))
 		if err != nil {
-			return 0, fmt.Errorf("error skipping overlong message: %w", err)
+			return 0, err
 		}
 		return 0, ErrTargetBufferTooSmall
 	}
 
-	return r.reader.Read(p[:length])
+	n, err := r.reader.Read(p[:length])
+	if n != int(length) {
+		return 0, fmt.Errorf("read wrong length: %d, wanted %d", n, length)
+	}
+	return n, err
 }
